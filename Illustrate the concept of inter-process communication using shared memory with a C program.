@@ -1,0 +1,77 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+#define SHM_SIZE 1024  // Size of the shared memory segment
+
+// Structure to represent data shared between processes
+struct SharedData {
+    int value;
+};
+
+// Function to create and attach to the shared memory segment
+int createSharedMemory() {
+    key_t key = ftok("shared_memory_example", 65);  // Generate a unique key
+
+    // Create a shared memory segment
+    int shmid = shmget(key, SHM_SIZE, IPC_CREAT | 0666);
+    if (shmid == -1) {
+        perror("shmget");
+        exit(EXIT_FAILURE);
+    }
+
+    return shmid;
+}
+
+// Function to write data to shared memory
+void writeDataToSharedMemory(struct SharedData *sharedData) {
+    printf("Writing to shared memory...\n");
+    sharedData->value = 42;
+    printf("Data written: %d\n", sharedData->value);
+}
+
+// Function to read data from shared memory
+void readDataFromSharedMemory(struct SharedData *sharedData) {
+    printf("Reading from shared memory...\n");
+    printf("Data read: %d\n", sharedData->value);
+}
+
+int main() {
+    int shmid = createSharedMemory();
+
+    // Attach to the shared memory segment
+    struct SharedData *sharedData = (struct SharedData *)shmat(shmid, NULL, 0);
+    if (sharedData == (struct SharedData *)(-1)) {
+        perror("shmat");
+        exit(EXIT_FAILURE);
+    }
+
+    // Fork a child process
+    pid_t pid = fork();
+
+    if (pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pid == 0) {
+        // Child process (reader)
+        readDataFromSharedMemory(sharedData);
+    } else {
+        // Parent process (writer)
+        writeDataToSharedMemory(sharedData);
+
+        // Wait for the child process to finish
+        wait(NULL);
+
+        // Detach from the shared memory segment
+        shmdt(sharedData);
+
+        // Remove the shared memory segment
+        shmctl(shmid, IPC_RMID, NULL);
+    }
+
+    return 0;
+}
