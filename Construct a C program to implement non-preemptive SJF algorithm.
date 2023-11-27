@@ -1,0 +1,88 @@
+#include <stdio.h>
+
+// Structure to represent a process
+struct Process {
+    int id;
+    int arrivalTime;
+    int burstTime;
+    int completionTime;
+    int turnaroundTime;
+    int waitingTime;
+    int executed; // Flag to track if the process has been executed
+};
+
+// Function to find the process with the shortest burst time
+int findShortestJob(struct Process processes[], int n, int currentTime) {
+    int shortestJobIndex = -1;
+    int shortestBurstTime = -1;
+
+    for (int i = 0; i < n; i++) {
+        // Check if the process has arrived and not yet executed
+        if (processes[i].arrivalTime <= currentTime && processes[i].executed == 0) {
+            // If it's the first eligible process or has a shorter burst time
+            if (shortestBurstTime == -1 || processes[i].burstTime < shortestBurstTime) {
+                shortestBurstTime = processes[i].burstTime;
+                shortestJobIndex = i;
+            }
+        }
+    }
+
+    return shortestJobIndex;
+}
+
+// Function to calculate turnaround time and waiting time for each process
+void calculateTimes(struct Process processes[], int n) {
+    for (int i = 0; i < n; i++) {
+        processes[i].turnaroundTime = processes[i].completionTime - processes[i].arrivalTime;
+        processes[i].waitingTime = processes[i].turnaroundTime - processes[i].burstTime;
+    }
+}
+
+// Function to simulate the scheduling
+void scheduleProcesses(struct Process processes[], int n) {
+    int currentTime = 0;
+
+    printf("Time\tProcess\n");
+
+    for (int i = 0; i < n; i++) {
+        // Find the process with the shortest burst time
+        int shortestJobIndex = findShortestJob(processes, n, currentTime);
+
+        if (shortestJobIndex == -1) {
+            // No eligible process found at this time, move to the next
+            currentTime++;
+        } else {
+            // Execute the selected process
+            printf("%d\tP%d\n", currentTime, processes[shortestJobIndex].id);
+            processes[shortestJobIndex].completionTime = currentTime;
+            processes[shortestJobIndex].executed = 1;
+            currentTime += processes[shortestJobIndex].burstTime;
+        }
+    }
+
+    // Calculate turnaround time and waiting time for each process
+    calculateTimes(processes, n);
+}
+
+int main() {
+    // Example processes
+    struct Process processes[] = {
+        {1, 0, 6, 0, 0, 0, 0},
+        {2, 2, 4, 0, 0, 0, 0},
+        {3, 4, 3, 0, 0, 0, 0},
+        {4, 6, 8, 0, 0, 0, 0}
+    };
+
+    int n = sizeof(processes) / sizeof(processes[0]);
+
+    // Run the scheduling algorithm
+    scheduleProcesses(processes, n);
+
+    // Display turnaround time and waiting time for each process
+    printf("\nProcess\tTurnaround Time\tWaiting Time\n");
+    for (int i = 0; i < n; i++) {
+        printf("P%d\t%d\t\t%d\n", processes[i].id, processes[i].turnaroundTime, processes[i].waitingTime);
+    }
+
+    return 0;
+}
