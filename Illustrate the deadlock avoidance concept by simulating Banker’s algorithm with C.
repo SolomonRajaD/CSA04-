@@ -1,0 +1,134 @@
+#include <stdio.h>
+
+#define MAX_PROCESSES 5
+#define MAX_RESOURCES 3
+
+int available[MAX_RESOURCES];
+int maximum[MAX_PROCESSES][MAX_RESOURCES];
+int allocation[MAX_PROCESSES][MAX_RESOURCES];
+int need[MAX_PROCESSES][MAX_RESOURCES];
+
+// Function to check if the system is in a safe state
+int isSafeState(int processes[], int request[], int processCount) {
+    int work[MAX_RESOURCES];
+    int finish[MAX_PROCESSES];
+
+    // Initialize work and finish arrays
+    for (int i = 0; i < MAX_RESOURCES; ++i) {
+        work[i] = available[i];
+    }
+
+    for (int i = 0; i < processCount; ++i) {
+        finish[i] = 0;
+    }
+
+    // Check if the requested resources are less than or equal to the need
+    for (int i = 0; i < MAX_RESOURCES; ++i) {
+        if (request[i] > need[processes[processCount]][i]) {
+            printf("Error: Requested resources exceed maximum claim.\n");
+            return 0;
+        }
+    }
+
+    // Check if the requested resources are less than or equal to the available resources
+    for (int i = 0; i < MAX_RESOURCES; ++i) {
+        if (request[i] > work[i]) {
+            printf("Error: Requested resources exceed available resources.\n");
+            return 0;
+        }
+    }
+
+    // Simulate resource allocation
+    for (int i = 0; i < MAX_RESOURCES; ++i) {
+        work[i] -= request[i];
+        allocation[processes[processCount]][i] += request[i];
+        need[processes[processCount]][i] -= request[i];
+    }
+
+    // Simulate process completion
+    for (int i = 0; i < MAX_RESOURCES; ++i) {
+        if (need[processes[processCount]][i] == 0) {
+            finish[processes[processCount]] = 1;
+        }
+    }
+
+    // Check if the system is in a safe state after resource allocation
+    int safe = 1;
+    for (int i = 0; i < processCount; ++i) {
+        if (finish[i] == 0) {
+            safe = 0;
+            break;
+        }
+    }
+
+    // If the system is in a safe state, return 1; otherwise, return 0
+    return safe;
+}
+
+// Function to simulate the Banker's algorithm
+void bankerAlgorithm(int processes[], int processCount) {
+    int request[MAX_RESOURCES];
+
+    // Get the process requesting resources
+    printf("Enter the process number (0-%d) requesting resources: ", processCount - 1);
+    int requestingProcess;
+    scanf("%d", &requestingProcess);
+
+    // Get the resource request from the user
+    printf("Enter the requested resources (up to %d) for process %d: ", MAX_RESOURCES, requestingProcess);
+    for (int i = 0; i < MAX_RESOURCES; ++i) {
+        scanf("%d", &request[i]);
+    }
+
+    // Check if the request can be granted without leading to deadlock
+    if (isSafeState(processes, request, requestingProcess)) {
+        printf("Resource request can be granted. Performing allocation.\n");
+    } else {
+        printf("Resource request cannot be granted to avoid deadlock.\n");
+    }
+}
+
+int main() {
+    int processes[MAX_PROCESSES];
+
+    // Initialize available resources
+    printf("Enter the available resources (up to %d): ", MAX_RESOURCES);
+    for (int i = 0; i < MAX_RESOURCES; ++i) {
+        scanf("%d", &available[i]);
+    }
+
+    // Initialize maximum resources for each process
+    printf("Enter the maximum resources for each process (up to %d processes and %d resources): \n", MAX_PROCESSES, MAX_RESOURCES);
+    for (int i = 0; i < MAX_PROCESSES; ++i) {
+        processes[i] = i;
+
+        for (int j = 0; j < MAX_RESOURCES; ++j) {
+            scanf("%d", &maximum[i][j]);
+            allocation[i][j] = 0;
+            need[i][j] = maximum[i][j];
+        }
+    }
+
+    // Display the initial state of the system
+    printf("\nInitial State:\n");
+    printf("Available Resources: ");
+    for (int i = 0; i < MAX_RESOURCES; ++i) {
+        printf("%d ", available[i]);
+    }
+    printf("\n");
+
+    printf("Maximum Resources:\n");
+    for (int i = 0; i < MAX_PROCESSES; ++i) {
+        for (int j = 0; j < MAX_RESOURCES; ++j) {
+            printf("%d ", maximum[i][j]);
+        }
+        printf("\n");
+    }
+
+    // Simulate resource requests using the Banker's algorithm
+    while (1) {
+        bankerAlgorithm(processes, MAX_PROCESSES);
+    }
+
+    return 0;
+}
