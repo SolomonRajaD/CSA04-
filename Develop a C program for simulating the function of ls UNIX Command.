@@ -1,0 +1,98 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <string.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
+
+void listFiles(const char *path, int showDetails) {
+    DIR *dir = opendir(path);
+
+    if (dir == NULL) {
+        perror("Error opening directory");
+        exit(EXIT_FAILURE);
+    }
+
+    struct dirent *entry;
+    struct stat fileStat;
+    struct passwd *user;
+    struct group *group;
+    char timeBuffer[80];
+
+    while ((entry = readdir(dir)) != NULL) {
+        char fullPath[1024];
+        snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
+
+        if (lstat(fullPath, &fileStat) == -1) {
+            perror("Error getting file information");
+            continue;
+        }
+
+        if (showDetails) {
+            // Print file permissions
+            printf((S_ISDIR(fileStat.st_mode)) ? "d" : "-");
+            printf((fileStat.st_mode & S_IRUSR) ? "r" : "-");
+            printf((fileStat.st_mode & S_IWUSR) ? "w" : "-");
+            printf((fileStat.st_mode & S_IXUSR) ? "x" : "-");
+            printf((fileStat.st_mode & S_IRGRP) ? "r" : "-");
+            printf((fileStat.st_mode & S_IWGRP) ? "w" : "-");
+            printf((fileStat.st_mode & S_IXGRP) ? "x" : "-");
+            printf((fileStat.st_mode & S_IROTH) ? "r" : "-");
+            printf((fileStat.st_mode & S_IWOTH) ? "w" : "-");
+            printf((fileStat.st_mode & S_IXOTH) ? "x" : "-");
+            printf(" ");
+            
+            // Print number of hard links
+            printf("%ld ", (long)fileStat.st_nlink);
+
+            // Print owner and group names
+            user = getpwuid(fileStat.st_uid);
+            group = getgrgid(fileStat.st_gid);
+            printf("%s %s ", (user != NULL) ? user->pw_name : "unknown", (group != NULL) ? group->gr_name : "unknown");
+
+            // Print file size
+            printf("%lld ", (long long)fileStat.st_size);
+
+            // Print modification time
+            strftime(timeBuffer, sizeof(timeBuffer), "%b %d %H:%M", localtime(&fileStat.st_mtime));
+            printf("%s ", timeBuffer);
+        }
+
+        printf("%s\n", entry->d_name);
+    }
+
+    closedir(dir);
+}
+
+int main(int argc, char *argv[]) {
+    int showDetails = 0; // Flag to determine whether to display details
+
+    // Parse command-line arguments
+    int opt;
+    while ((opt = getopt(argc, argv, "l")) != -1) {
+        switch (opt) {
+            case 'l':
+                showDetails = 1;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-l]\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    // Determine the path to list (current directory if not specified)
+    const char *path;
+    if (optind < argc) {
+        path = argv[optind];
+    } else {
+        path = ".";
+    }
+
+    listFiles(path, showDetails);
+
+    return 0;
+}
+
